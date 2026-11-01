@@ -1,0 +1,39 @@
+app:
+  qctp:
+    projectName: qctp
+    serviceName: qctp-proto
+    port: ${EXPOSED_PORT:9025}
+    chunk-size-in-bytes: 1536
+    qrCodeSizePx: 500
+
+  system:
+    time:
+      zoneId: "Europe/Moscow"
+    language: "ru"
+
+server:
+  port: ${app.qctp.port}
+  servlet:
+    context-path: /${app.qctp.serviceName}
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  errorResponse:
+    stackTraceEnabled: false
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+  web:
+    resources:
+      static-locations: classpath:/static/
+
+logging:
+  level:
+    ROOT: INFO
+    org.springframework: INFO
+  config: classpath:config/logging/logback-spring.xml

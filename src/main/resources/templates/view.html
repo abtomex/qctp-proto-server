@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>QR-коды — просмотр</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto;
+               padding: 20px; text-align: center; color: #333; }
+        h1 { margin-bottom: 5px; }
+        .summary { color: #555; font-size: 14px; margin-bottom: 20px; }
+        .counter { font-size: 22px; font-weight: bold; margin: 10px 0 20px; color: #0066cc; }
+        .counter .small { font-size: 14px; color: #777; font-weight: normal; }
+        .qr-wrap { display: inline-block; padding: 15px; border: 1px solid #ddd;
+                   border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .qr-wrap img { width: 500px; height: 500px; display: block; }
+        .nav { margin: 25px 0 10px; display: flex; gap: 15px; justify-content: center;
+               align-items: center; }
+        .nav button { font-size: 18px; padding: 10px 30px; border: none; border-radius: 8px;
+                      background: #0066cc; color: white; cursor: pointer; }
+        .nav button:hover:not(:disabled) { background: #0052a3; }
+        .nav button:disabled { background: #ccc; cursor: not-allowed; }
+        .toolbar { margin-top: 15px; display: flex; gap: 12px; justify-content: center; }
+        .toolbar a { text-decoration: none; padding: 8px 18px; border-radius: 6px;
+                     background: #f0f0f5; color: #333; font-size: 14px; }
+        .toolbar a:hover { background: #e2e2ec; }
+        .preview { font-family: monospace; font-size: 10px; background: #f8f8f8; padding: 8px;
+                   border-radius: 6px; word-break: break-all; max-height: 100px; overflow: auto;
+                   margin-top: 20px; text-align: left; color: #444; }
+    </style>
+</head>
+<body>
+
+<h1>QR-коды файла</h1>
+<div class="summary">
+    <div><b>Файл:</b> <span th:text="${fileName}"></span></div>
+    <div>Размер: <span th:text="${fileSize}"></span> байт ·
+         Часть: <span th:text="${chunkSize}"></span> символов</div>
+</div>
+
+<div class="counter">
+    QR-код <span id="currentNum" th:text="${index + 1}"></span>
+    из <span id="totalNum" th:text="${total}"></span>
+    <span class="small">(часть #<span th:text="${index + 1}"></span>)</span>
+</div>
+
+<div class="qr-wrap">~
+    <img id="qrImage"
+         th:src="@{'/qr/' + ${sessionId} + '/' + ${index}}"
+         alt="QR-код"/>
+</div>
+
+<div class="nav">
+    <button id="btnPrev" type="button"
+            th:attr="data-id=${sessionId},data-index=${index}"
+            th:disabled="${index == 0}">◀ Назад</button>
+    <button id="btnNext" type="button"
+            th:attr="data-id=${sessionId},data-index=${index}"
+            th:disabled="${index == total - 1}">Вперёд ▶</button>
+</div>
+
+<div class="toolbar">
+    <a th:href="@{'/download/' + ${sessionId}}">⬇ Скачать все QR (ZIP)</a>
+    <a class="back" th:href="@{/}">← Загрузить другой файл</a>
+</div>
+
+<div class="preview" id="chunkPreview" th:text="${currentChunk}"></div>
+
+<script th:inline="javascript">
+    const ctx = /*[[@{/}]]*/ '/';
+
+    const sessionId = /*[[${sessionId}]]*/ '';
+    const total     = /*[[${total}]]*/ 0;
+    let   index     = /*[[${index}]]*/ 0;
+
+    const img         = document.getElementById('qrImage');
+    const currentNum  = document.getElementById('currentNum');
+    const btnPrev     = document.getElementById('btnPrev');
+    const btnNext     = document.getElementById('btnNext');
+    const preview     = document.getElementById('chunkPreview');
+
+    function render() {
+        img.src = ctx + '/qr/' + sessionId + '/' + index;
+        currentNum.textContent = index + 1;
+        btnPrev.disabled = (index === 0);
+        btnNext.disabled = (index === total - 1);
+
+        // Подгружаем текст части для превью (можно опустить для скорости)
+        fetch(ctx + '/chunk/' + sessionId + '/' + index)
+            .then(r => r.ok ? r.text() : '')
+            .then(t => preview.textContent = t)
+            .catch(() => preview.textContent = '');
+
+        // Обновляем URL без перезагрузки, чтобы F5 и ссылки работали
+        const newUrl = ctx + '/view/' + sessionId + '?index=' + index;
+        history.replaceState(null, '', newUrl);
+    }
+
+    btnPrev.addEventListener('click', () => {
+        if (index > 0) { index--; render(); }
+    });
+    btnNext.addEventListener('click', () => {
+        if (index < total - 1) { index++; render(); }
+    });
+
+    // Управление стрелками клавиатуры
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft'  && index > 0)         { index--; render(); }
+        if (e.key === 'ArrowRight' && index < total - 1) { index++; render(); }
+    });
+</script>
+</body>
+</html>
