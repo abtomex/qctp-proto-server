@@ -16,11 +16,7 @@
     </style>
 </head>
 <body>
-<h1>Загрузка файла и генерация QR-кодов</h1>
-<div class="info">
-    Файл будет закодирован в Base64, разделён на части по <b>5 КБ</b>,
-    и для каждой части будет сгенерирован QR-код.
-</div>
+<h1>Выбор файла</h1>
 
 <form method="post" th:action="@{/upload}" enctype="multipart/form-data">
     <input type="file" name="file" required/>
