@@ -2,15 +2,15 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>QR-коды — просмотр</title>
+    <title>QCTP-Proto</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto;
                padding: 20px; text-align: center; color: #333; }
         h1 { margin-bottom: 5px; }
         .summary { color: #555; font-size: 14px; margin-bottom: 20px; }
-        .counter { font-size: 22px; font-weight: bold; margin: 10px 0 20px; color: #0066cc; }
-        .counter .small { font-size: 14px; color: #777; font-weight: normal; }
-        .qr-wrap { display: inline-block; padding: 15px; border: 1px solid #ddd;
+        .counter { font-size: 22px; font-weight: bold; margin-top: 5px; color: #0066cc; }
+        .counter .small { font-size: 10px; color: #777; font-weight: normal; }
+        .qr-wrap { display: inline-block; padding: 0 0 0 0; border: 1px solid #ddd;
                    border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .qr-wrap img { width: 500px; height: 500px; display: block; }
         .nav { margin: 25px 0 10px; display: flex; gap: 15px; justify-content: center;
@@ -37,13 +37,11 @@
          Часть: <span th:text="${chunkSize}"></span> символов</div>
 </div>
 
-<div class="counter">
-    QR-код <span id="currentNum" th:text="${index + 1}"></span>
-    из <span id="totalNum" th:text="${total}"></span>
-    <span class="small">(часть #<span th:text="${index + 1}"></span>)</span>
-</div>
-
-<div class="qr-wrap">~
+<div class="qr-wrap">
+    <div class="counter">
+        QR-код <span id="currentNum" th:text="${index + 1}"></span>
+        из <span id="totalNum" th:text="${total}"></span>
+    </div>
     <img id="qrImage"
          th:src="@{'/qr/' + ${sessionId} + '/' + ${index}}"
          alt="QR-код"/>
@@ -84,11 +82,13 @@
         btnPrev.disabled = (index === 0);
         btnNext.disabled = (index === total - 1);
 
+        // Подгружаем текст части для превью (можно опустить для скорости)
         fetch(ctx + '/chunk/' + sessionId + '/' + index)
             .then(r => r.ok ? r.text() : '')
             .then(t => preview.textContent = t)
             .catch(() => preview.textContent = '');
 
+        // Обновляем URL без перезагрузки, чтобы F5 и ссылки работали
         const newUrl = ctx + '/view/' + sessionId + '?index=' + index;
         history.replaceState(null, '', newUrl);
     }
