@@ -45,8 +45,16 @@ public class QrController {
             return index();
         }
 
-        byte[] bytes = file.getBytes();
-        String base64 = service.encodeToBase64(bytes);
+        byte[] originalBytes = file.getBytes();
+        String originalName = file.getOriginalFilename();
+
+        // 1. Сжимаем файл в 7z с максимальной степенью сжатия
+        byte[] compressedBytes = service.compressTo7z(originalBytes, sanitize(originalName));
+
+        // 2. Кодируем сжатый архив в Base64
+        String base64 = service.encodeToBase64(compressedBytes);
+
+        // 3. Разбиваем Base64 на чанки и генерируем QR-коды
         List<String> chunks = service.splitBase64(base64);
 
         List<byte[]> qrPngList = new ArrayList<>(chunks.size());
@@ -54,15 +62,21 @@ public class QrController {
         for (int i = 0; i < chunks.size(); i++) {
             final String chunk = chunks.get(i);
             final QctpMessage message = new QctpMessage(
-                    sanitize(file.getOriginalFilename()),
+                    sanitize(originalName) + ".7z",
                     chunks.size(),
-                    i+1,
+                    i + 1,
                     chunk
             );
             qrPngList.add(service.generateQrCodePng(objectMapper.writeValueAsString(message)));
         }
 
-        UploadSession session = service.createSession(file.getOriginalFilename(), bytes.length, chunks, qrPngList);
+        // 4. Создаем сессию: в fileSize сохраняем размер сжатого архива,
+        UploadSession session = service.createSession(
+                originalName,
+                compressedBytes.length,
+                chunks,
+                qrPngList
+        );
 
         return "redirect:/view/" + session.getSessionId() + "?index=0";
     }
@@ -120,7 +134,6 @@ public class QrController {
                 zip.write(session.getQrPngCache().get(i));
                 zip.closeEntry();
             }
-
         }
         final byte[] zipBytes = bos.toByteArray();
         return ResponseEntity
@@ -128,12 +141,10 @@ public class QrController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"qr_" + session.getSessionId() + ".zip\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(zipBytes);
-
     }
 
     private String sanitize(String name) {
         if (!StringUtils.hasLength(name)) return "file";
         return name.replaceAll("[^\\p{L}0-9._-]", "_");
-//        return name.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 }

@@ -84,13 +84,11 @@
         btnPrev.disabled = (index === 0);
         btnNext.disabled = (index === total - 1);
 
-        // Подгружаем текст части для превью (можно опустить для скорости)
         fetch(ctx + '/chunk/' + sessionId + '/' + index)
             .then(r => r.ok ? r.text() : '')
             .then(t => preview.textContent = t)
             .catch(() => preview.textContent = '');
 
-        // Обновляем URL без перезагрузки, чтобы F5 и ссылки работали
         const newUrl = ctx + '/view/' + sessionId + '?index=' + index;
         history.replaceState(null, '', newUrl);
     }

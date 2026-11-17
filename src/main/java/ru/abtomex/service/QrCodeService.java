@@ -8,6 +8,14 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import lombok.RequiredArgsConstructor;
+import net.sf.sevenzipjbinding.IOutCreateArchive7z;
+import net.sf.sevenzipjbinding.IOutCreateCallback;
+import net.sf.sevenzipjbinding.IOutItem7z;
+import net.sf.sevenzipjbinding.ISequentialInStream;
+import net.sf.sevenzipjbinding.SevenZip;
+import net.sf.sevenzipjbinding.SevenZipException;
+import net.sf.sevenzipjbinding.impl.OutItemFactory;
+import net.sf.sevenzipjbinding.util.ByteArrayStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.abtomex.session.SessionRepo;
@@ -50,6 +58,7 @@ public class QrCodeService {
     public byte[] generateQrCodePng(String content) throws WriterException, IOException {
         return generateQrCodePng(content, qrCodeSize);
     }
+
     public byte[] generateQrCodePng(String content, int size) throws WriterException, IOException {
         Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
         hints.put(ERROR_CORRECTION, ErrorCorrectionLevel.L);
@@ -62,6 +71,58 @@ public class QrCodeService {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         MatrixToImageWriter.writeToStream(matrix, "PNG", out);
         return out.toByteArray();
+    }
+
+    /**
+     * Сжимает входные данные в 7z-архив с максимальной степенью сжатия (уровень 9 / Ultra).
+     * Всё происходит в памяти, без создания временных файлов на диске.
+     *
+     * @param inputBytes исходные данные
+     * @param fileName   имя файла внутри архива
+     * @return байты 7z-архива
+     */
+    public byte[] compressTo7z(byte[] inputBytes, String fileName) throws IOException {
+        final byte[] data = inputBytes;
+        final String entryName = fileName;
+
+        ByteArrayStream outStream = new ByteArrayStream(Integer.MAX_VALUE);
+
+        try (IOutCreateArchive7z outArchive = SevenZip.openOutArchive7z()) {
+            // 9 = Ultra (максимальная степень сжатия)
+            outArchive.setLevel(9);
+
+            outArchive.createArchive(outStream, 1, new IOutCreateCallback<IOutItem7z>() {
+                @Override
+                public void setOperationResult(boolean operationResultOk) {
+                }
+
+                @Override
+                public void setTotal(long total) {
+                }
+
+                @Override
+                public void setCompleted(long complete) {
+                }
+
+                @Override
+                public IOutItem7z getItemInformation(int index, OutItemFactory<IOutItem7z> outItemFactory) {
+                    IOutItem7z item = outItemFactory.createOutItem();
+                    item.setPropertyPath(entryName);
+                    item.setDataSize((long) data.length);
+                    return item;
+                }
+
+                @Override
+                public ISequentialInStream getStream(int index) {
+                    return new net.sf.sevenzipjbinding.impl.SequentialInStreamImpl(
+                            new java.io.ByteArrayInputStream(data));
+                }
+            });
+        } catch (SevenZipException e) {
+            throw new IOException("Ошибка при сжатии в 7z", e);
+        }
+
+        return outStream.getBytes();
     }
 
     public UploadSession createSession(String originalFilename, int length, List<String> chunks, List<byte[]> qrPngList) {

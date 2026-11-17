@@ -3,7 +3,7 @@ app:
     projectName: qctp
     serviceName: qctp-proto
     port: ${EXPOSED_PORT:9025}
-    chunk-size-in-bytes: 1536
+    chunk-size-in-bytes: 1000
     qrCodeSizePx: 500
 
   system:
